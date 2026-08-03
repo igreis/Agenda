@@ -1,0 +1,268 @@
+{
+  "pacientes": [
+    {
+      "id": "p1",
+      "nome": "Ana Silva",
+      "telefone": "(34) 99101-2233",
+      "email": "ana.silva@email.com",
+      "dataNascimento": "1990-04-12",
+      "observacoes": "Sensibilidade a anestesia local.",
+      "criadoEm": "2026-06-01T10:00:00.000Z",
+      "odontogramaAtual": {
+        "17": "restaurado",
+        "23": "canal",
+        "37": "fraturado"
+      }
+    },
+    {
+      "id": "p2",
+      "nome": "Carlos Mendes",
+      "telefone": "(34) 99202-3344",
+      "email": "carlos.mendes@email.com",
+      "dataNascimento": "1985-11-02",
+      "observacoes": "",
+      "criadoEm": "2026-06-03T10:00:00.000Z"
+    },
+    {
+      "id": "p3",
+      "nome": "Fernanda Costa",
+      "telefone": "(34) 99303-4455",
+      "email": "fernanda.costa@email.com",
+      "dataNascimento": "1997-02-20",
+      "observacoes": "Prefere horários no fim da tarde.",
+      "criadoEm": "2026-06-05T10:00:00.000Z",
+      "odontogramaAtual": {
+        "18": "canal"
+      }
+    },
+    {
+      "id": "p4",
+      "nome": "Rafael Torres",
+      "telefone": "(34) 99404-5566",
+      "email": "",
+      "dataNascimento": "2001-09-08",
+      "observacoes": "",
+      "criadoEm": "2026-06-10T10:00:00.000Z"
+    },
+    {
+      "id": "p5",
+      "nome": "Beatriz Lima",
+      "telefone": "(34) 99505-6677",
+      "email": "beatriz.lima@email.com",
+      "dataNascimento": "1978-07-30",
+      "observacoes": "Paciente com hipertensão controlada.",
+      "criadoEm": "2026-06-12T10:00:00.000Z",
+      "odontogramaAtual": {
+        "15": "restaurado",
+        "22": "canal",
+        "26": "extraido"
+      }
+    }
+  ],
+  "consultas": [
+    {
+      "id": "c1",
+      "pacienteId": "p1",
+      "pacienteNome": "Ana Silva",
+      "data": "2026-08-01",
+      "horaInicio": "08:30",
+      "duracaoMin": 60,
+      "procedimento": "Limpeza e profilaxia",
+      "status": "concluido",
+      "observacoes": "",
+      "criadoEm": "2026-07-20T10:00:00.000Z"
+    },
+    {
+      "id": "c2",
+      "pacienteId": "p2",
+      "pacienteNome": "Carlos Mendes",
+      "data": "2026-08-01",
+      "horaInicio": "10:00",
+      "duracaoMin": 90,
+      "procedimento": "cana",
+      "status": "agendado",
+      "observacoes": "",
+      "criadoEm": "2026-07-21T10:00:00.000Z",
+      "dentes": [
+        11,
+        42
+      ]
+    },
+    {
+      "id": "c3",
+      "pacienteId": "p3",
+      "pacienteNome": "Fernanda Costa",
+      "data": "2026-08-01",
+      "horaInicio": "14:00",
+      "duracaoMin": 120,
+      "procedimento": "Clareamento dental",
+      "status": "agendado",
+      "observacoes": "",
+      "criadoEm": "2026-07-22T10:00:00.000Z"
+    },
+    {
+      "id": "c4",
+      "pacienteId": "p4",
+      "pacienteNome": "Rafael Torres",
+      "data": "2026-08-02",
+      "horaInicio": "09:00",
+      "duracaoMin": 45,
+      "procedimento": "Avaliação inicial",
+      "status": "agendado",
+      "observacoes": "",
+      "criadoEm": "2026-07-22T10:00:00.000Z"
+    },
+    {
+      "id": "c5",
+      "pacienteId": "p5",
+      "pacienteNome": "Beatriz Lima",
+      "data": "2026-08-02",
+      "horaInicio": "11:00",
+      "duracaoMin": 60,
+      "procedimento": "Canal",
+      "status": "concluido",
+      "observacoes": "",
+      "criadoEm": "2026-07-23T10:00:00.000Z"
+    },
+    {
+      "id": "c6",
+      "pacienteId": "p1",
+      "pacienteNome": "Ana Silva",
+      "data": "2026-08-03",
+      "horaInicio": "15:30",
+      "duracaoMin": 30,
+      "procedimento": "Retorno",
+      "status": "agendado",
+      "observacoes": "",
+      "criadoEm": "2026-07-24T10:00:00.000Z"
+    },
+    {
+      "id": "c7",
+      "pacienteId": "p2",
+      "pacienteNome": "Carlos Mendes",
+      "data": "2026-07-30",
+      "horaInicio": "10:00",
+      "duracaoMin": 60,
+      "procedimento": "Extração",
+      "status": "concluido",
+      "observacoes": "",
+      "criadoEm": "2026-07-18T10:00:00.000Z"
+    },
+    {
+      "id": "c8",
+      "pacienteId": "p3",
+      "pacienteNome": "Fernanda Costa",
+      "data": "2026-07-29",
+      "horaInicio": "13:00",
+      "duracaoMin": 60,
+      "procedimento": "Limpeza e profilaxia",
+      "status": "cancelado",
+      "observacoes": "Paciente remarcou.",
+      "criadoEm": "2026-07-17T10:00:00.000Z"
+    },
+    {
+      "id": "355b2a6e-fb34-4b0f-bd64-c14e555f05b9",
+      "pacienteId": "p3",
+      "pacienteNome": "Fernanda Costa",
+      "data": "2026-08-02",
+      "horaInicio": "09:00",
+      "duracaoMin": 60,
+      "procedimento": "Canal",
+      "status": "concluido",
+      "observacoes": "",
+      "dentes": [
+        11,
+        43
+      ],
+      "criadoEm": "2026-08-02T14:07:39.067Z"
+    },
+    {
+      "id": "e76f2e5e-149d-4e6b-8e95-75d1e2294ea9",
+      "pacienteId": "p1",
+      "pacienteNome": "Ana Silva",
+      "data": "2026-08-02",
+      "horaInicio": "09:00",
+      "duracaoMin": 60,
+      "procedimento": "Canal",
+      "status": "concluido",
+      "observacoes": "",
+      "dentes": [
+        12
+      ],
+      "criadoEm": "2026-08-02T23:47:14.950Z"
+    },
+    {
+      "id": "8220371d-43a7-479c-a1d3-c8387ce14e99",
+      "pacienteId": "p1",
+      "pacienteNome": "Ana Silva",
+      "data": "2026-08-02",
+      "horaInicio": "09:00",
+      "duracaoMin": 60,
+      "procedimento": "Restauração",
+      "status": "agendado",
+      "observacoes": "",
+      "dentes": [
+        48
+      ],
+      "criadoEm": "2026-08-02T23:49:16.220Z"
+    }
+  ],
+  "atendimentos": [
+    {
+      "id": "36586dad-38c9-44ec-b8f9-6d1eb5c7f9c0",
+      "consultaId": "c5",
+      "pacienteId": "p5",
+      "data": "2026-08-02",
+      "procedimentoRealizado": "Canal",
+      "observacoes": "",
+      "proximoPasso": "",
+      "odontograma": {
+        "26": "extraido"
+      },
+      "anexos": [],
+      "criadoEm": "2026-08-02T18:13:10.675Z"
+    },
+    {
+      "id": "90d42a9b-cc7b-4230-9686-c9860aa9e370",
+      "consultaId": "355b2a6e-fb34-4b0f-bd64-c14e555f05b9",
+      "pacienteId": "p3",
+      "data": "2026-08-02",
+      "procedimentoRealizado": "Canal",
+      "observacoes": "",
+      "proximoPasso": "",
+      "odontograma": {
+        "18": "canal"
+      },
+      "anexos": [],
+      "criadoEm": "2026-08-02T18:13:24.916Z"
+    },
+    {
+      "id": "a1901ed1-3d38-419b-9554-7a753e9bd7a0",
+      "consultaId": "c1",
+      "pacienteId": "p1",
+      "data": "2026-08-01",
+      "procedimentoRealizado": "Limpeza e profilaxia",
+      "observacoes": "",
+      "proximoPasso": "",
+      "odontograma": {
+        "17": "restaurado"
+      },
+      "anexos": [],
+      "criadoEm": "2026-08-02T18:18:34.280Z"
+    },
+    {
+      "id": "fd5b2944-cf9f-4f97-89bf-5777afbfd8e1",
+      "consultaId": "e76f2e5e-149d-4e6b-8e95-75d1e2294ea9",
+      "pacienteId": "p1",
+      "data": "2026-08-02",
+      "procedimentoRealizado": "Canal",
+      "observacoes": "",
+      "proximoPasso": "",
+      "odontograma": {
+        "23": "canal"
+      },
+      "anexos": [],
+      "criadoEm": "2026-08-02T23:47:54.688Z"
+    }
+  ]
+}
