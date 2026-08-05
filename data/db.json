@@ -21,7 +21,10 @@
       "email": "carlos.mendes@email.com",
       "dataNascimento": "1985-11-02",
       "observacoes": "",
-      "criadoEm": "2026-06-03T10:00:00.000Z"
+      "criadoEm": "2026-06-03T10:00:00.000Z",
+      "odontogramaAtual": {
+        "13": "restaurado"
+      }
     },
     {
       "id": "p3",
@@ -205,6 +208,22 @@
         48
       ],
       "criadoEm": "2026-08-02T23:49:16.220Z"
+    },
+    {
+      "id": "9704a8c0-199d-4a0e-9353-fd8c8a6f5259",
+      "pacienteId": "p2",
+      "pacienteNome": "Carlos Mendes",
+      "data": "2026-08-03",
+      "horaInicio": "09:00",
+      "duracaoMin": 60,
+      "procedimento": "Restauração",
+      "status": "concluido",
+      "observacoes": "",
+      "dentes": [
+        11,
+        23
+      ],
+      "criadoEm": "2026-08-03T18:14:02.303Z"
     }
   ],
   "atendimentos": [
@@ -263,6 +282,20 @@
       },
       "anexos": [],
       "criadoEm": "2026-08-02T23:47:54.688Z"
+    },
+    {
+      "id": "fd4f611d-c10a-4a9d-8b5e-deae573c47e3",
+      "consultaId": "9704a8c0-199d-4a0e-9353-fd8c8a6f5259",
+      "pacienteId": "p2",
+      "data": "2026-08-03",
+      "procedimentoRealizado": "Restauração",
+      "observacoes": "",
+      "proximoPasso": "",
+      "odontograma": {
+        "13": "restaurado"
+      },
+      "anexos": [],
+      "criadoEm": "2026-08-03T18:14:17.486Z"
     }
   ]
 }
