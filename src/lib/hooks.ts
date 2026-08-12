@@ -9,10 +9,21 @@ export function usePacientes() {
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
-    const res = await fetch("/api/pacientes", { cache: "no-store" });
-    const data = await res.json();
-    setPacientes(data);
-    setCarregando(false);
+    try {
+      const res = await fetch("/api/pacientes", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setPacientes(data);
+      } else {
+        console.error("Erro ao carregar pacientes:", data);
+        setPacientes([]);
+      }
+    } catch (err) {
+      console.error("Erro de rede/requisição ao carregar pacientes:", err);
+      setPacientes([]);
+    } finally {
+      setCarregando(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -55,7 +66,7 @@ export function usePacientes() {
     [recarregar]
   );
 
-  return { pacientes, carregando, recarregar, criarPaciente, atualizarPaciente, removerPaciente };
+  return { pacientes: pacientes || [], carregando, recarregar, criarPaciente, atualizarPaciente, removerPaciente };
 }
 
 export function useConsultas() {
@@ -64,10 +75,21 @@ export function useConsultas() {
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
-    const res = await fetch("/api/consultas", { cache: "no-store" });
-    const data = await res.json();
-    setConsultas(data);
-    setCarregando(false);
+    try {
+      const res = await fetch("/api/consultas", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setConsultas(data);
+      } else {
+        console.error("Erro ao carregar consultas:", data);
+        setConsultas([]);
+      }
+    } catch (err) {
+      console.error("Erro de rede/requisição ao carregar consultas:", err);
+      setConsultas([]);
+    } finally {
+      setCarregando(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -110,27 +132,49 @@ export function useConsultas() {
     [recarregar]
   );
 
-  return { consultas, carregando, recarregar, criarConsulta, atualizarConsulta, removerConsulta };
+  return { consultas: consultas || [], carregando, recarregar, criarConsulta, atualizarConsulta, removerConsulta };
 }
 
-export function useAtendimentos() {
+export function useAtendimentos(pacienteId?: string) {
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
-    const res = await fetch("/api/atendimentos", { cache: "no-store" });
-    const data = await res.json();
-    setAtendimentos(data);
-    setCarregando(false);
-  }, []);
+    try {
+      const url = pacienteId
+        ? `/api/atendimentos?pacienteId=${encodeURIComponent(pacienteId)}`
+        : "/api/atendimentos";
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setAtendimentos(data);
+      } else {
+        console.error("Erro ao carregar atendimentos:", data);
+        setAtendimentos([]);
+      }
+    } catch (err) {
+      console.error("Erro de rede/requisição ao carregar atendimentos:", err);
+      setAtendimentos([]);
+    } finally {
+      setCarregando(false);
+    }
+  }, [pacienteId]);
 
   useEffect(() => {
     recarregar();
   }, [recarregar]);
 
   const criarAtendimento = useCallback(
-    async (dados: Partial<Atendimento> & { odontogramaCompleto?: Record<number, string> }) => {
+    async (dados: {
+      consultaId: string;
+      pacienteId: string;
+      procedimentoRealizado: string;
+      observacoes?: string;
+      proximoPasso?: string;
+      odontograma?: Record<number, string>;
+      data?: string;
+    }) => {
       const res = await fetch("/api/atendimentos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,19 +183,6 @@ export function useAtendimentos() {
       if (!res.ok) throw new Error((await res.json()).erro ?? "Erro ao registrar atendimento.");
       await recarregar();
       return res.json();
-    },
-    [recarregar]
-  );
-
-  const atualizarAtendimento = useCallback(
-    async (id: string, dados: Partial<Atendimento> & { odontogramaCompleto?: Record<number, string> }) => {
-      const res = await fetch(`/api/atendimentos/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-      });
-      if (!res.ok) throw new Error((await res.json()).erro ?? "Erro ao atualizar atendimento.");
-      await recarregar();
     },
     [recarregar]
   );
@@ -166,11 +197,11 @@ export function useAtendimentos() {
   );
 
   return {
-    atendimentos,
+    atendimentos: atendimentos || [],
     carregando,
     recarregar,
     criarAtendimento,
-    atualizarAtendimento,
     removerAtendimento,
   };
 }
+

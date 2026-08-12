@@ -1,60 +1,73 @@
 import { NextResponse } from "next/server";
-import { lerBanco, salvarBanco } from "@/lib/db";
+import { criarClienteServidor } from "@/lib/supabase/server";
+import { linhaParaConsulta } from "@/lib/supabase/mapeamento";
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   const body = await request.json();
-  const banco = await lerBanco();
+  const supabase = await criarClienteServidor();
 
-  const idx = banco.consultas.findIndex((c) => c.id === params.id);
-  if (idx === -1) {
+  const updateData: Record<string, any> = {};
+
+  if (body.pacienteId) {
+    const { data: paciente, error: pacError } = await supabase
+      .from("pacientes")
+      .select("id, nome")
+      .eq("id", body.pacienteId)
+      .single();
+
+    if (pacError || !paciente) {
+      return NextResponse.json(
+        { erro: "Paciente não encontrado." },
+        { status: 404 }
+      );
+    }
+    updateData.paciente_id = paciente.id;
+    updateData.paciente_nome = paciente.nome;
+  }
+
+  if (body.data !== undefined) updateData.data = body.data;
+  if (body.horaInicio !== undefined) updateData.hora_inicio = body.horaInicio;
+  if (body.duracaoMin !== undefined) updateData.duracao_min = Number(body.duracaoMin);
+  if (body.procedimento !== undefined) updateData.procedimento = body.procedimento;
+  if (body.status !== undefined) updateData.status = body.status;
+  if (body.observacoes !== undefined) updateData.observacoes = body.observacoes;
+  if (body.dentes !== undefined && Array.isArray(body.dentes)) {
+    updateData.dentes = body.dentes;
+  }
+
+  const { data, error } = await supabase
+    .from("consultas")
+    .update(updateData)
+    .eq("id", params.id)
+    .select()
+    .single();
+
+  if (error || !data) {
     return NextResponse.json(
-      { erro: "Consulta não encontrada." },
-      { status: 404 }
+      { erro: error?.message || "Consulta não encontrada." },
+      { status: error ? 500 : 404 }
     );
   }
 
-  let pacienteNome = banco.consultas[idx].pacienteNome;
-  if (body.pacienteId && body.pacienteId !== banco.consultas[idx].pacienteId) {
-    const paciente = banco.pacientes.find((p) => p.id === body.pacienteId);
-    if (paciente) pacienteNome = paciente.nome;
-  }
-
-  banco.consultas[idx] = {
-    ...banco.consultas[idx],
-    pacienteId: body.pacienteId ?? banco.consultas[idx].pacienteId,
-    pacienteNome,
-    data: body.data ?? banco.consultas[idx].data,
-    horaInicio: body.horaInicio ?? banco.consultas[idx].horaInicio,
-    duracaoMin: body.duracaoMin ? Number(body.duracaoMin) : banco.consultas[idx].duracaoMin,
-    procedimento: body.procedimento ?? banco.consultas[idx].procedimento,
-    status: body.status ?? banco.consultas[idx].status,
-    observacoes: body.observacoes ?? banco.consultas[idx].observacoes,
-    dentes: Array.isArray(body.dentes) ? body.dentes : banco.consultas[idx].dentes ?? [],
-  };
-
-  await salvarBanco(banco);
-  return NextResponse.json(banco.consultas[idx]);
+  return NextResponse.json(linhaParaConsulta(data));
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const banco = await lerBanco();
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase
+    .from("consultas")
+    .delete()
+    .eq("id", params.id);
 
-  const existe = banco.consultas.some((c) => c.id === params.id);
-  if (!existe) {
-    return NextResponse.json(
-      { erro: "Consulta não encontrada." },
-      { status: 404 }
-    );
+  if (error) {
+    return NextResponse.json({ erro: error.message }, { status: 500 });
   }
-
-  banco.consultas = banco.consultas.filter((c) => c.id !== params.id);
-  await salvarBanco(banco);
 
   return NextResponse.json({ ok: true });
 }

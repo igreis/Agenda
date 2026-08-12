@@ -39,8 +39,7 @@ export interface Atendimento {
   procedimentoRealizado: string;
   observacoes?: string;
   proximoPasso?: string;
-  odontograma?: MapaDentes; // estado dos dentes alterados nesse atendimento
-  anexos?: string[]; // URLs ou paths, pode ficar vazio por enquanto
+  odontograma: Record<number, string>; // usa o mesmo formato de MapaDentes
   criadoEm: string;
 }
 

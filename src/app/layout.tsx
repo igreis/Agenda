@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "react-odontogram/style.css";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "DentaAgenda — Gestão de consultas",
@@ -24,10 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <div className="flex flex-col md:flex-row min-h-screen">
-          <Sidebar />
-          <main className="flex-1 min-w-0">{children}</main>
-        </div>
+        {children}
       </body>
     </html>
   );

@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
 import Odontograma, { MapaDentes } from "./Odontograma";
 import { Consulta, Paciente } from "@/lib/types";
+import { useAtendimentos } from "@/lib/hooks";
 
 const PROCEDIMENTOS_SUGERIDOS = [
   "Avaliação inicial",
@@ -25,36 +26,35 @@ export default function AtendimentoModal({
   onFechar,
   consulta,
   paciente,
+  onSalvo,
   onSalvar,
 }: {
   aberto: boolean;
   onFechar: () => void;
   consulta: Consulta | null;
   paciente: Paciente | null;
-  onSalvar: (dados: {
-    consultaId: string;
-    pacienteId: string;
-    data: string;
-    procedimentoRealizado: string;
-    observacoes?: string;
-    proximoPasso?: string;
-    odontogramaCompleto?: MapaDentes;
-  }) => Promise<void>;
+  onSalvo?: () => void | Promise<void>;
+  onSalvar?: (dados: any) => Promise<void>;
 }) {
+  const { criarAtendimento } = useAtendimentos();
   const [procedimentoRealizado, setProcedimentoRealizado] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [proximoPasso, setProximoPasso] = useState("");
-  const [odontograma, setOdontograma] = useState<MapaDentes>({});
+  const [odontogramaEditavel, setOdontogramaEditavel] = useState<MapaDentes>({});
   const [mostrarOdontograma, setMostrarOdontograma] = useState(false);
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
+  const odontogramaOriginalRef = useRef<MapaDentes>({});
+
   useEffect(() => {
     if (!aberto || !consulta) return;
-    setProcedimentoRealizado(consulta.procedimento);
+    setProcedimentoRealizado(consulta.procedimento || "");
     setObservacoes("");
     setProximoPasso("");
-    setOdontograma(paciente?.odontogramaAtual ?? {});
+    const mapaAtual = (paciente?.odontogramaAtual as MapaDentes) ?? {};
+    odontogramaOriginalRef.current = { ...mapaAtual };
+    setOdontogramaEditavel({ ...mapaAtual });
     setMostrarOdontograma(false);
     setErro("");
   }, [aberto, consulta, paciente]);
@@ -68,17 +68,42 @@ export default function AtendimentoModal({
     }
     setSalvando(true);
     setErro("");
+
     try {
-      await onSalvar({
-        consultaId: consulta.id,
-        pacienteId: paciente.id,
-        data: consulta.data,
-        procedimentoRealizado: procedimentoRealizado.trim(),
-        observacoes: observacoes.trim() || undefined,
-        proximoPasso: proximoPasso.trim() || undefined,
-        odontogramaCompleto: mostrarOdontograma ? odontograma : undefined,
-      });
+      // Calcula o delta comparando odontogramaEditavel com o odontogramaOriginal
+      const delta: Record<number, string> = {};
+      const original = odontogramaOriginalRef.current || {};
+      for (const [kStr, val] of Object.entries(odontogramaEditavel)) {
+        const k = Number(kStr);
+        if (original[k] !== val) {
+          delta[k] = val;
+        }
+      }
+
+      if (onSalvar) {
+        await onSalvar({
+          consultaId: consulta.id,
+          pacienteId: paciente.id,
+          data: consulta.data,
+          procedimentoRealizado: procedimentoRealizado.trim(),
+          observacoes: observacoes.trim() || undefined,
+          proximoPasso: proximoPasso.trim() || undefined,
+          odontograma: delta,
+        });
+      } else {
+        await criarAtendimento({
+          consultaId: consulta.id,
+          pacienteId: paciente.id,
+          data: consulta.data,
+          procedimentoRealizado: procedimentoRealizado.trim(),
+          observacoes: observacoes.trim() || undefined,
+          proximoPasso: proximoPasso.trim() || undefined,
+          odontograma: delta,
+        });
+      }
+
       onFechar();
+      await onSalvo?.();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao registrar atendimento.");
     } finally {
@@ -142,7 +167,7 @@ export default function AtendimentoModal({
           </button>
           {mostrarOdontograma && (
             <div className="mt-3">
-              <Odontograma valor={odontograma} onChange={setOdontograma} />
+              <Odontograma valor={odontogramaEditavel} onChange={setOdontogramaEditavel} />
             </div>
           )}
         </div>

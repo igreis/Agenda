@@ -234,8 +234,7 @@ export default function PainelPage() {
         onFechar={() => setModalAtendimentoAberto(false)}
         consulta={consultaAtendimento}
         paciente={pacienteAtendimento}
-        onSalvar={async (dados) => {
-          await criarAtendimento(dados);
+        onSalvo={async () => {
           await Promise.all([recarregarConsultas(), recarregarPacientes()]);
         }}
       />

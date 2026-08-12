@@ -14,7 +14,7 @@ export default function PacientePerfilPage() {
   const params = useParams();
   const id = params.id as string;
   const { pacientes, carregando, atualizarPaciente, removerPaciente } = usePacientes();
-  const { atendimentos, carregando: carregandoAtendimentos } = useAtendimentos();
+  const { atendimentos, carregando: carregandoAtendimentos } = useAtendimentos(id);
   const [modalAberto, setModalAberto] = useState(false);
   const [salvandoOdontograma, setSalvandoOdontograma] = useState(false);
 
@@ -23,10 +23,10 @@ export default function PacientePerfilPage() {
   const historico = useMemo(
     () =>
       atendimentos
-        .filter((a) => a.pacienteId === id)
         .sort((a, b) => `${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)),
-    [atendimentos, id]
+    [atendimentos]
   );
+
 
   async function handleOdontogramaChange(novoMapa: MapaDentes) {
     if (!paciente) return;
@@ -138,9 +138,7 @@ export default function PacientePerfilPage() {
                     </div>
                     {a.odontograma && Object.keys(a.odontograma).length > 0 && (
                       <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                        {Object.keys(a.odontograma).length} dente
-                        {Object.keys(a.odontograma).length === 1 ? "" : "s"} alterado
-                        {Object.keys(a.odontograma).length === 1 ? "" : "s"}
+                        Dentes alterados: {Object.keys(a.odontograma).join(", ")}
                       </span>
                     )}
                   </div>
@@ -152,6 +150,11 @@ export default function PacientePerfilPage() {
                       <span className="font-medium text-ink-800">Próximo passo:</span>{" "}
                       {a.proximoPasso}
                     </p>
+                  )}
+                  {a.odontograma && Object.keys(a.odontograma).length > 0 && (
+                    <div className="mt-3">
+                      <Odontograma valor={a.odontograma as MapaDentes} somenteLeitura />
+                    </div>
                   )}
                 </li>
               ))}

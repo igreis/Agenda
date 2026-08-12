@@ -1,111 +1,91 @@
-Este projeto (Next.js + TypeScript + Supabase) tem 3 bugs relacionados à
-funcionalidade de "Registrar atendimento" que acabou de ser implementada.
-Investigue a causa raiz de cada um antes de alterar código — não faça
-mudanças especulativas sem antes confirmar onde está o problema.
+Preciso implementar login com Supabase Auth neste projeto Next.js (App
+Router) + TypeScript. O projeto já está integrado ao Supabase para dados
+(veja `src/lib/supabase/client.ts` e `src/lib/supabase/server.ts`, que já
+existem e devem ser reaproveitados, não recriados). Leia a estrutura atual
+do projeto antes de mexer em qualquer coisa.
 
-## Sintomas
+## O que fazer, em ordem
 
-1. Depois de registrar um atendimento, a consulta continua aparecendo como
-   "Agendado" (não muda para "Concluído").
-2. Por causa do sintoma 1, o botão "Registrar atendimento" continua
-   disponível para a mesma consulta, permitindo registrar de novo.
-3. O odontograma aparece em branco tanto ao abrir um novo atendimento
-   (deveria pré-carregar o estado atual do paciente) quanto ao visualizar
-   um atendimento já registrado (o dente marcado não aparece).
+**1. Reorganizar as rotas com um route group**
 
-## Como investigar (siga nessa ordem)
+Mover as páginas atuais (`src/app/page.tsx`, `src/app/agenda/`,
+`src/app/pacientes/`) para dentro de um novo grupo `src/app/(app)/` — ou
+seja, `src/app/(app)/page.tsx`, `src/app/(app)/agenda/page.tsx`,
+`src/app/(app)/pacientes/page.tsx`. Isso não muda nenhuma URL (route groups
+com parênteses não aparecem na URL), só reorganiza fisicamente as pastas.
 
-**Passo 1 — Confirme o que está salvo no banco antes de mexer no código.**
-Abra o Table Editor do Supabase e, depois de registrar um atendimento de
-teste marcando um dente como "cariado", confira nas 3 tabelas:
-- `atendimentos.odontograma` — tem o dente marcado, ou está `{}`?
-- `pacientes.odontograma_atual` — foi atualizado com o dente, ou está `{}`?
-- `consultas.status` — virou `"concluido"`, ou continua `"agendado"`?
+Motivo: a tela de login não pode ter a Sidebar do app, mas todas as outras
+páginas precisam. Route group é a forma correta de ter dois layouts
+diferentes convivendo.
 
-Isso separa o problema em duas categorias possíveis: **(A) o backend não
-está salvando/atualizando corretamente**, ou **(B) o backend está certo mas
-o frontend não está lendo/exibindo o dado atualizado**. Trate cada bug
-abaixo de acordo com o que você encontrar.
+**2. `src/app/(app)/layout.tsx`** (novo arquivo)
 
-**Passo 2 — Se o banco NÃO tiver os dados corretos (categoria A):**
+Deve renderizar a `Sidebar` (componente já existente em
+`src/components/Sidebar.tsx`) envolvendo `{children}`, do mesmo jeito que o
+layout raiz fazia antes.
 
-Abra `src/app/api/atendimentos/route.ts` e verifique o `POST`:
-- As 3 operações (insert em `atendimentos`, update em `consultas`, update
-  em `pacientes`) estão de fato sendo executadas em sequência, com `await`
-  em cada uma?
-- O `error` de cada chamada Supabase está sendo checado individualmente?
-  É comum um erro de uma dessas 3 operações ser silenciosamente ignorado
-  (por exemplo, se só o `error` do insert é checado, mas os dois updates
-  seguintes não têm o retorno verificado) — isso explicaria o atendimento
-  salvo mas a consulta não atualizada.
-- No update de `consultas`, o `.eq("id", consultaId)` está usando a
-  variável correta (confirme que `consultaId` recebido no body do POST é
-  de fato o UUID da consulta, não do paciente ou do atendimento por engano).
-- No merge do odontograma: o código busca o `odontograma_atual` **atual**
-  do paciente antes de fazer o merge, ou está sobrescrevendo com base em um
-  valor desatualizado/vazio?
-- Adicione `console.error` (ou log equivalente) em cada `if (error)` dessas
-  3 operações que hoje pode estar sem log, para expor erros silenciosos no
-  terminal do servidor.
+**3. `src/app/layout.tsx`** (simplificar)
 
-**Passo 3 — Se o banco JÁ tiver os dados corretos (categoria B):**
+Remover a renderização da `Sidebar` daqui — ela agora é responsabilidade
+exclusiva do layout do grupo `(app)`. Este arquivo deve manter apenas
+`<html>`, `<head>` (incluindo os links de fonte, se já existirem) e
+`<body>{children}</body>`, sem sidebar nem wrapper de layout do app.
 
-O bug está no frontend não refletir o estado novo. Verifique:
-- Em `src/lib/hooks.ts`, o hook `useConsultas` (ou equivalente) — depois
-  que `AtendimentoModal` salva com sucesso e chama `onSalvo()`, o código
-  que recebe esse callback na página (`src/app/(app)/page.tsx` e
-  `src/app/(app)/agenda/page.tsx`) está de fato chamando
-  `recarregarConsultas()` (ou o nome equivalente da função de refetch)?
-  Sem isso, a lista de consultas em tela continua com o dado antigo em
-  cache, mesmo que o banco já esteja certo.
-- A condição que decide mostrar o botão "Registrar atendimento" está lendo
-  o `status` do objeto de consulta **depois** do refetch, não uma cópia
-  antiga guardada em outro state.
+**4. `src/app/login/page.tsx`** (novo — fica fora do grupo `(app)`, então
+não recebe a Sidebar)
 
-**Passo 4 — Bug do odontograma em branco, especificamente:**
+Client Component com formulário de e-mail e senha, chamando
+`supabase.auth.signInWithPassword({ email, password })` usando o cliente de
+`src/lib/supabase/client.ts`. Em caso de sucesso, redirecionar para `/`
+com `router.push("/")` seguido de `router.refresh()`. Em caso de erro,
+mostrar mensagem "E-mail ou senha inválidos." (não expor o erro técnico
+bruto do Supabase). Seguir o mesmo estilo visual (Tailwind, cores, fontes)
+já usado nos outros componentes do projeto — consulte
+`src/components/Modal.tsx` ou `src/components/PacienteModal.tsx` para
+referência de padrão visual (inputs, botões, cores `brand-*`).
 
-Depois de confirmar (via Passo 1) se o dado está ou não no banco:
+Adicionar um texto pequeno no rodapé da tela explicando que a conta é
+criada direto no painel do Supabase (Authentication → Users), já que não
+haverá tela de cadastro público.
 
-- Se estiver vazio no banco: o problema é em `AtendimentoModal.tsx`, no
-  cálculo do delta enviado para a API. Verifique se o state
-  `odontogramaEditavel` que é enviado no submit reflete de fato os cliques
-  feitos no `<Odontograma />` (pode haver stale closure se o valor
-  enviado no `fetch`/submit estiver capturando uma versão antiga do state
-  ao invés da mais recente). Verifique também se o nome do campo enviado
-  no body do POST (`odontograma`) bate exatamente com o nome que a rota de
-  API espera ler — um typo aqui salvaria `{}` silenciosamente sem erro.
+**5. `src/middleware.ts`** (novo — na raiz de `src/`, irmão da pasta `app/`)
 
-- Se estiver correto no banco mas não aparecer na tela: o problema é em
-  como o componente recebe os dados:
-  - No `AtendimentoModal.tsx`, confirme que o `paciente` passado como prop
-    é buscado com dado atualizado (não uma versão em cache antiga de antes
-    do último atendimento) antes de inicializar
-    `odontogramaEditavel = paciente.odontogramaAtual`.
-  - Confirme em `src/lib/supabase/mapeamento.ts`, na função
-    `linhaParaPaciente`, que o campo `odontogramaAtual` está sendo lido de
-    `linha.odontograma_atual` (nome exato da coluna no banco) — um typo no
-    nome da coluna faria isso sempre retornar `undefined` ou `{}`.
-  - Na tela de histórico de atendimentos (perfil do paciente), confirme
-    que está lendo `atendimento.odontograma` (não um nome de campo
-    diferente) ao montar a lista.
-  - Verifique se `<Odontograma valor={...} />` está recebendo o objeto
-    correto e não um objeto vazio sendo passado por engano (ex: um state
-    inicial que nunca é atualizado com o dado vindo da API).
+Deve:
+- Criar um cliente Supabase de servidor usando `createServerClient` de
+  `@supabase/ssr`, lendo/gravando cookies da requisição (`request.cookies`),
+  seguindo o padrão oficial de middleware do `@supabase/ssr` para Next.js
+  App Router.
+- Verificar a sessão do usuário (`supabase.auth.getUser()`).
+- Se não houver usuário autenticado E a rota não for `/login`, redirecionar
+  para `/login`.
+- Se houver usuário autenticado E a rota for `/login`, redirecionar para `/`.
+- Aplicar em todas as rotas exceto assets estáticos (`_next/static`,
+  `_next/image`, `favicon.ico`, imagens) via `config.matcher`.
 
-## Depois de corrigir
+**6. Logout na Sidebar**
 
-Rode `npm run build` para confirmar que não há erro de tipo. Depois, teste
-manualmente do zero, nessa ordem, e confirme cada etapa antes de passar
-para a próxima:
+Em `src/components/Sidebar.tsx`, adicionar um botão "Sair" no rodapé (perto
+de onde já mostra o nome do consultório) que chama
+`supabase.auth.signOut()` (cliente de `src/lib/supabase/client.ts`) e depois
+redireciona para `/login` com `router.push` + `router.refresh()`. Usar um
+ícone de logout do `lucide-react` (ex: `LogOut`) consistente com os outros
+ícones já usados no componente.
 
-1. Registrar um atendimento marcando um dente como "cariado"
-2. Conferir no Supabase Table Editor que as 3 tabelas foram atualizadas
-   corretamente (`atendimentos.odontograma`, `pacientes.odontograma_atual`,
-   `consultas.status`)
-3. Voltar para a Agenda/Painel sem dar refresh manual na página e confirmar
-   que a consulta já aparece como "Concluído" e o botão "Registrar
-   atendimento" não aparece mais para ela
-4. Abrir um novo atendimento para o mesmo paciente (outra consulta) e
-   confirmar que o odontograma já abre com o dente marcado
-5. Abrir o histórico de atendimentos desse paciente e confirmar que o
-   atendimento registrado aparece com o dente correto listado`
+## Verificações finais
+
+- Rode `npm run build` e confirme que não há erro de tipo, incluindo o
+  `middleware.ts` sendo reconhecido corretamente pelo Next.js.
+- Confirme que `src/app/(app)/layout.tsx` não duplica nenhum wrapper HTML
+  (`<html>`, `<body>`) que já existe no `src/app/layout.tsx` — route groups
+  compartilham o layout raiz, então o layout do grupo deve conter *apenas*
+  a Sidebar + main, não repetir a estrutura HTML inteira.
+- Não implemente tela de cadastro/registro público, recuperação de senha,
+  nem qualquer fluxo além de login e logout — isso é intencional, o único
+  jeito de criar usuário é manual, pelo painel do Supabase.
+- Não mude nada relacionado às rotas de API (`src/app/api/...`) nesta
+  tarefa — login é só nas páginas, a proteção das rotas de API fica para
+  uma etapa separada depois.
+
+Depois de implementar, teste manualmente: acessar `/agenda` sem estar
+logado deve redirecionar para `/login`; fazer login deve levar para `/`;
+clicar em "Sair" deve voltar para `/login` e bloquear acesso de novo.

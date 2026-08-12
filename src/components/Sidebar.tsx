@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutGrid, CalendarDays, Users, Stethoscope, Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutGrid, CalendarDays, Users, Stethoscope, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
+import { criarClienteNavegador } from "@/lib/supabase/client";
 
 const links = [
   { href: "/", label: "Painel", icon: LayoutGrid },
@@ -13,7 +14,18 @@ const links = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [saindo, setSaindo] = useState(false);
+
+  async function sair() {
+    setSaindo(true);
+    const supabase = criarClienteNavegador();
+    await supabase.auth.signOut();
+    setIsOpen(false);
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <>
@@ -81,6 +93,15 @@ export default function Sidebar() {
         <div className="border-t border-white/10 px-5 py-4">
           <p className="text-sm font-semibold text-white/90">Consultório Solo</p>
           <p className="text-xs text-white/45">Dra. Responsável</p>
+          <button
+            type="button"
+            onClick={sair}
+            disabled={saindo}
+            className="mt-4 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-white/65 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogOut className="h-[18px] w-[18px]" strokeWidth={2} />
+            {saindo ? "Saindo..." : "Sair"}
+          </button>
         </div>
       </aside>
     </>

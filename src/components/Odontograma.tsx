@@ -25,9 +25,11 @@ const ESTADOS: { id: EstadoDente; label: string; cor: string; fundo: string }[] 
 export default function Odontograma({
   valor,
   onChange,
+  somenteLeitura = false,
 }: {
   valor: MapaDentes;
-  onChange: (novoMapa: MapaDentes) => void;
+  onChange?: (novoMapa: MapaDentes) => void;
+  somenteLeitura?: boolean;
 }) {
   const [resetKey, setResetKey] = useState(0);
   const [denteAtivo, setDenteAtivo] = useState<ToothDetail | null>(null);
@@ -37,7 +39,7 @@ export default function Odontograma({
   }
 
   function aplicarCondicao(estado: EstadoDente) {
-    if (!denteAtivo) return;
+    if (!denteAtivo || !onChange) return;
     const fdi = Number(denteAtivo.notations.fdi);
     onChange({ ...valor, [fdi]: estado });
     setDenteAtivo(null);
@@ -45,7 +47,7 @@ export default function Odontograma({
   }
 
   function limparCondicao() {
-    if (!denteAtivo) return;
+    if (!denteAtivo || !onChange) return;
     const fdi = Number(denteAtivo.notations.fdi);
     const copia = { ...valor };
     delete copia[fdi];
@@ -66,7 +68,9 @@ export default function Odontograma({
   return (
     <div className="rounded-2xl bg-white p-5 shadow-card">
       <p className="mb-3 text-sm font-medium text-ink-800">
-        Clique em um dente para marcar a condição do atendimento:
+        {somenteLeitura
+          ? "Condições registradas neste atendimento:"
+          : "Clique em um dente para marcar a condição do atendimento:"}
       </p>
 
       <OdontogramBase
@@ -75,11 +79,12 @@ export default function Odontograma({
         layout="square"
         singleSelect
         onChange={aoSelecionar}
+        readOnly={somenteLeitura}
         teethConditions={grupos}
         colors={{ darkBlue: "#175f5b", baseBlue: "#94a3b8", lightBlue: "#d3f2ec" }}
       />
 
-      {denteAtivo && (
+      {!somenteLeitura && denteAtivo && (
         <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50/60 p-3">
           <p className="mb-2 text-sm font-semibold text-ink-900">
             Dente {denteAtivo.notations.fdi} ({denteAtivo.type}) — qual a condição?
