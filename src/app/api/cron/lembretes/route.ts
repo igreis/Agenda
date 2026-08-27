@@ -2,13 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { enviarLembreteWhatsapp } from "@/lib/whatsapp";
 import { format, addDays } from "date-fns";
-import { utcToZonedTime } from "date-fns-tz";
 
 function getTomorrowInBrazil(): string {
-  // Get current time in Brazil timezone (America/Sao_Paulo)
+  // Obter a data de amanhã no fuso horário do Brasil (America/Sao_Paulo)
   const now = new Date();
-  const brazilTime = utcToZonedTime(now, "America/Sao_Paulo");
-  const tomorrow = addDays(brazilTime, 1);
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(now);
+  
+  const year = parts.find(p => p.type === "year")?.value;
+  const month = parts.find(p => p.type === "month")?.value.padStart(2, "0");
+  const day = parts.find(p => p.type === "day")?.value.padStart(2, "0");
+
+  const brazilDate = new Date(`${year}-${month}-${day}T00:00:00`);
+  const tomorrow = addDays(brazilDate, 1);
+  
   // Format as yyyy-MM-dd for database query
   return format(tomorrow, "yyyy-MM-dd");
 }
