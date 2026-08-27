@@ -1,91 +1,143 @@
-Preciso implementar login com Supabase Auth neste projeto Next.js (App
-Router) + TypeScript. O projeto já está integrado ao Supabase para dados
-(veja `src/lib/supabase/client.ts` e `src/lib/supabase/server.ts`, que já
-existem e devem ser reaproveitados, não recriados). Leia a estrutura atual
-do projeto antes de mexer em qualquer coisa.
+Preciso implementar o envio automático de lembrete de consulta via WhatsApp
+Business Cloud API (oficial da Meta) neste projeto Next.js + TypeScript +
+Supabase. Não é um bot conversacional — é só um envio automático 1x por dia
+com uma mensagem de template contendo 2 botões de resposta rápida
+("Confirmar presença" / "Não vou poder ir"), e um webhook simples que só
+processa o toque nesses botões (nada de menu, nada de fluxo de conversa).
 
-## O que fazer, em ordem
+Leia a estrutura atual do projeto antes de mexer em qualquer coisa —
+especialmente `src/lib/supabase/server.ts`, `src/lib/supabase/mapeamento.ts`
+e o padrão das rotas em `src/app/api/`.
 
-**1. Reorganizar as rotas com um route group**
+## Contexto que você precisa saber (já configurado, não mexer)
 
-Mover as páginas atuais (`src/app/page.tsx`, `src/app/agenda/`,
-`src/app/pacientes/`) para dentro de um novo grupo `src/app/(app)/` — ou
-seja, `src/app/(app)/page.tsx`, `src/app/(app)/agenda/page.tsx`,
-`src/app/(app)/pacientes/page.tsx`. Isso não muda nenhuma URL (route groups
-com parênteses não aparecem na URL), só reorganiza fisicamente as pastas.
+- O Supabase já tem as tabelas `pacientes` e `consultas` (ver
+  `src/lib/types.ts` para os campos).
+- Foi adicionada esta coluna em `consultas` (já rodada manualmente, não
+  precisa criar):
+```sql
+  alter table consultas add column if not exists lembrete_enviado_em timestamptz;
+```
+- O template da mensagem já foi criado e aprovado no Meta Business Manager,
+  com o nome definido pela variável de ambiente `WHATSAPP_TEMPLATE_NAME`,
+  no idioma `pt_BR`, com corpo usando 4 variáveis posicionais na ordem:
+  `{{1}}` = nome do paciente, `{{2}}` = data (formato "dd/MM"), `{{3}}` =
+  horário (formato "HH:mm"), `{{4}}` = procedimento. O template tem 2
+  botões de resposta rápida (quick reply): índice 0 = "Confirmar presença",
+  índice 1 = "Não vou poder ir".
 
-Motivo: a tela de login não pode ter a Sidebar do app, mas todas as outras
-páginas precisam. Route group é a forma correta de ter dois layouts
-diferentes convivendo.
+## Variáveis de ambiente a adicionar (`.env.example` e documentar no README)
 
-**2. `src/app/(app)/layout.tsx`** (novo arquivo)
+WHATSAPP_TOKEN= # token de acesso permanente (System User)
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_TEMPLATE_NAME=lembrete_consulta
+WHATSAPP_VERIFY_TOKEN= # escolhido por mim, usado na verificação do webhook
+WHATSAPP_APP_SECRET= # usado para validar assinatura do webhook
+CRON_SECRET= # protege a rota de cron contra chamadas externas
 
-Deve renderizar a `Sidebar` (componente já existente em
-`src/components/Sidebar.tsx`) envolvendo `{children}`, do mesmo jeito que o
-layout raiz fazia antes.
 
-**3. `src/app/layout.tsx`** (simplificar)
+## O que implementar
 
-Remover a renderização da `Sidebar` daqui — ela agora é responsabilidade
-exclusiva do layout do grupo `(app)`. Este arquivo deve manter apenas
-`<html>`, `<head>` (incluindo os links de fonte, se já existirem) e
-`<body>{children}</body>`, sem sidebar nem wrapper de layout do app.
+**1. `src/lib/whatsapp.ts`**
 
-**4. `src/app/login/page.tsx`** (novo — fica fora do grupo `(app)`, então
-não recebe a Sidebar)
+Exporte uma função:
+```ts
+async function enviarLembreteWhatsapp(params: {
+  telefone: string;       // já no formato salvo em pacientes.telefone
+  nome: string;
+  dataFormatada: string;  // "dd/MM"
+  horario: string;        // "HH:mm"
+  procedimento: string;
+  consultaId: string;
+}): Promise<void>
+```
 
-Client Component com formulário de e-mail e senha, chamando
-`supabase.auth.signInWithPassword({ email, password })` usando o cliente de
-`src/lib/supabase/client.ts`. Em caso de sucesso, redirecionar para `/`
-com `router.push("/")` seguido de `router.refresh()`. Em caso de erro,
-mostrar mensagem "E-mail ou senha inválidos." (não expor o erro técnico
-bruto do Supabase). Seguir o mesmo estilo visual (Tailwind, cores, fontes)
-já usado nos outros componentes do projeto — consulte
-`src/components/Modal.tsx` ou `src/components/PacienteModal.tsx` para
-referência de padrão visual (inputs, botões, cores `brand-*`).
+Ela deve:
+- Normalizar o telefone para o formato E.164 que a API exige (adicionar
+  `55` na frente se não tiver, remover caracteres não numéricos).
+- Fazer um `POST` para
+  `https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`
+  com header `Authorization: Bearer ${WHATSAPP_TOKEN}`, enviando um payload
+  de mensagem de template com os 4 parâmetros do corpo E com os botões
+  usando parâmetro dinâmico de `payload` (component type `"button"`,
+  sub_type `"quick_reply"`), assim:
+  - Botão índice 0 → payload `confirmar:${consultaId}`
+  - Botão índice 1 → payload `cancelar:${consultaId}`
 
-Adicionar um texto pequeno no rodapé da tela explicando que a conta é
-criada direto no painel do Supabase (Authentication → Users), já que não
-haverá tela de cadastro público.
+  (Isso é o que permite, quando a pessoa tocar no botão, identificar qual
+  consulta e qual ação no webhook — o payload volta exatamente como foi
+  enviado.)
+- Se a resposta da API não for OK, lançar um erro com a mensagem retornada
+  pela Meta (para aparecer no log de quem chamou a função).
 
-**5. `src/middleware.ts`** (novo — na raiz de `src/`, irmão da pasta `app/`)
+**2. `src/app/api/cron/lembretes/route.ts`**
 
-Deve:
-- Criar um cliente Supabase de servidor usando `createServerClient` de
-  `@supabase/ssr`, lendo/gravando cookies da requisição (`request.cookies`),
-  seguindo o padrão oficial de middleware do `@supabase/ssr` para Next.js
-  App Router.
-- Verificar a sessão do usuário (`supabase.auth.getUser()`).
-- Se não houver usuário autenticado E a rota não for `/login`, redirecionar
-  para `/login`.
-- Se houver usuário autenticado E a rota for `/login`, redirecionar para `/`.
-- Aplicar em todas as rotas exceto assets estáticos (`_next/static`,
-  `_next/image`, `favicon.ico`, imagens) via `config.matcher`.
+- `GET` (Vercel Cron sempre chama via GET).
+- Proteger a rota: verificar o header `Authorization` contra
+  `Bearer ${process.env.CRON_SECRET}` — se não bater, retornar 401.
+- Calcular a data de amanhã (fuso horário do Brasil — cuidado com apenas
+  usar `new Date()` cru, considere o offset).
+- Usando `criarClienteServidor()`, buscar em `consultas`: `data = amanhã`,
+  `status` não em `('cancelado', 'concluido')`, `lembrete_enviado_em is null`.
+- Para cada consulta, buscar o paciente vinculado (`paciente_id`) para
+  pegar nome e telefone.
+- Chamar `enviarLembreteWhatsapp(...)` para cada uma, dentro de um
+  try/catch individual (uma falha não deve interromper as demais).
+- Em caso de sucesso, atualizar essa consulta com
+  `lembrete_enviado_em = now()`.
+- Retornar um JSON resumindo quantas mensagens foram enviadas e quantas
+  falharam (com os erros), para eu conseguir ver no log da Vercel.
 
-**6. Logout na Sidebar**
+**3. `vercel.json`** (criar ou atualizar na raiz do projeto)
 
-Em `src/components/Sidebar.tsx`, adicionar um botão "Sair" no rodapé (perto
-de onde já mostra o nome do consultório) que chama
-`supabase.auth.signOut()` (cliente de `src/lib/supabase/client.ts`) e depois
-redireciona para `/login` com `router.push` + `router.refresh()`. Usar um
-ícone de logout do `lucide-react` (ex: `LogOut`) consistente com os outros
-ícones já usados no componente.
+```json
+{
+  "crons": [
+    { "path": "/api/cron/lembretes", "schedule": "0 21 * * *" }
+  ]
+}
+```
+(21h UTC = 18h horário de Brasília — a Vercel Cron sempre usa UTC, deixe um
+comentário no README explicando essa conversão para eu poder ajustar o
+horário depois se quiser.)
+
+**4. `src/app/api/webhooks/whatsapp/route.ts`**
+
+- **`GET`** — implementa a verificação inicial do webhook exigida pela
+  Meta: ler os query params `hub.mode`, `hub.verify_token`,
+  `hub.challenge`; se `hub.verify_token` bater com
+  `process.env.WHATSAPP_VERIFY_TOKEN`, responder com o valor de
+  `hub.challenge` em texto puro (status 200); senão, responder 403.
+
+- **`POST`** — recebe os eventos do WhatsApp:
+  - Antes de processar, validar a assinatura do corpo da requisição usando
+    o header `x-hub-signature-256` e `WHATSAPP_APP_SECRET` (HMAC SHA-256
+    do corpo bruto da requisição) — rejeitar com 401 se não bater.
+  - Extrair do payload o campo do botão pressionado (é um objeto de
+    mensagem com `type: "button"`, contendo o `payload` que foi definido
+    no envio — ex: `"confirmar:abc-123"` ou `"cancelar:abc-123"`).
+  - Separar a string pelo `:` para pegar a ação e o `consultaId`.
+  - Se ação for `confirmar`: `update consultas set status = 'confirmado'`
+    onde `id = consultaId` **e** `status not in ('concluido', 'cancelado')`
+    (evita sobrescrever um status que já avançou).
+  - Se ação for `cancelar`: mesma lógica, mas `status = 'cancelado'`.
+  - Opcionalmente, enviar de volta uma mensagem de texto simples de
+    confirmação (“Consulta confirmada! Te esperamos.” ou “Tudo bem,
+    cancelamos sua consulta.”) usando o mesmo endpoint de envio da Cloud
+    API (mensagem de texto livre, não precisa de template, pois estamos
+    dentro da janela de atendimento de 24h aberta pela resposta do
+    paciente).
+  - Sempre responder `200 OK` rapidamente para a Meta, mesmo que algo
+    interno falhe (logar o erro, mas não deixar a Meta re-tentar
+    indefinidamente por timeout/erro 500).
 
 ## Verificações finais
 
-- Rode `npm run build` e confirme que não há erro de tipo, incluindo o
-  `middleware.ts` sendo reconhecido corretamente pelo Next.js.
-- Confirme que `src/app/(app)/layout.tsx` não duplica nenhum wrapper HTML
-  (`<html>`, `<body>`) que já existe no `src/app/layout.tsx` — route groups
-  compartilham o layout raiz, então o layout do grupo deve conter *apenas*
-  a Sidebar + main, não repetir a estrutura HTML inteira.
-- Não implemente tela de cadastro/registro público, recuperação de senha,
-  nem qualquer fluxo além de login e logout — isso é intencional, o único
-  jeito de criar usuário é manual, pelo painel do Supabase.
-- Não mude nada relacionado às rotas de API (`src/app/api/...`) nesta
-  tarefa — login é só nas páginas, a proteção das rotas de API fica para
-  uma etapa separada depois.
-
-Depois de implementar, teste manualmente: acessar `/agenda` sem estar
-logado deve redirecionar para `/login`; fazer login deve levar para `/`;
-clicar em "Sair" deve voltar para `/login` e bloquear acesso de novo.
+- Rode `npm run build` e confirme que não há erro de tipo.
+- Documente no README, em uma seção nova, como configurar o webhook no
+  painel da Meta (URL = `https://SEU-DOMINIO/api/webhooks/whatsapp` +
+  o `WHATSAPP_VERIFY_TOKEN` escolhido) e como funciona o cron da Vercel.
+- Não implemente nenhum fluxo de conversa, menu, ou resposta a texto livre
+  do paciente além do que foi descrito no item 4 — qualquer mensagem que
+  não seja um toque nos 2 botões esperados deve ser ignorada silenciosamente
+  pelo webhook (apenas responder 200 OK sem processar nada).
